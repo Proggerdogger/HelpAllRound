@@ -164,13 +164,13 @@ const Slideshow = () => {
               style={{ left: 'calc(50% + 5% - 20px)', zIndex: 5 }}
             >
               <Image
-                src="/images/helpallroundgood.png"
+                src="/images/HelpAllRoundgood.png"
                 alt="Help All Round"
                 width={600}
                 height={400}
                 className="w-3/4 h-[90%] object-contain"
                 priority
-                onError={() => console.error('Failed to load image: /images/helpallroundgood.png')}
+                onError={() => console.error('Failed to load image: /images/HelpAllRoundgood.png')}
               />
             </div>
           </div>
