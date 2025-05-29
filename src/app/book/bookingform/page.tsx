@@ -66,7 +66,7 @@ export default function BookingFormPage() {
         <Payment
           onBack={() => handleStepChange("select")}
           onNext={() => handleStepChange("confirmation")}
-          formData={formData}
+         
         />
       )}
       {currentStep === "confirmation" && (
