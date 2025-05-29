@@ -204,7 +204,7 @@ const Slideshow = () => {
                 {/* Image positioned above */}
                 <div className="h-[240px] flex items-center justify-center mb-4 z-10">
                   <Image
-                    src="/images/helpallroundgood.png"
+                    src="/images/Helpallroundgood.png"
                     alt="Help All Round Slide 1"
                     width={220}
                     height={140}
@@ -258,13 +258,13 @@ const Slideshow = () => {
                 style={{ left: 'calc(50% + 5% - 20px)', zIndex: 5 }}
               >
                 <Image
-                  src="/images/helpallroundgood.png"
+                  src="/images/Helpallroundgood.png"
                   alt="Help All Round"
                   width={600}
                   height={400}
                   className="w-3/4 h-[90%] object-contain"
                   
-                  onError={() => console.error('Failed to load image: /images/helpallroundgood.png')}
+                  onError={() => console.error('Failed to load image: /images/Helpallroundgood.png')}
                 />
               </div>
             </div>
