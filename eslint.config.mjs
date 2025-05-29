@@ -25,6 +25,9 @@ const eslintConfig = [
       "**/public/build/",
     ],
   },
+  // Spread the configurations from compat.extends() here
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  // Your custom configuration object for specific files
   {
     // Specify the files to lint
     files: ["**/*.{js,jsx,ts,tsx}"],
@@ -44,8 +47,6 @@ const eslintConfig = [
       "react-hooks": reactHooksPlugin,
       "jsx-a11y": jsxA11yPlugin,
     },
-    // Extend Next.js and TypeScript configs via FlatCompat
-    ...compat.extends("next/core-web-vitals", "next/typescript"),
     // Custom rules
     rules: {
       "react/no-unescaped-entities": "off",
@@ -61,4 +62,4 @@ const eslintConfig = [
   },
 ];
 
-export default eslintConfig;
+export default eslintConfig; 
