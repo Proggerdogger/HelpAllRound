@@ -16,14 +16,10 @@ interface StripePaymentMethod {
     exp_month: number;
     exp_year: number;
   };
-
-}
-
-
+  // Add other fields if necessary based on Stripe API response
 }
 
 type PaymentMethodDisplayProps = Record<string, never>;
-
 
 const PaymentMethodForm: React.FC<PaymentMethodDisplayProps> = () => {
   const stripe = useStripe();
