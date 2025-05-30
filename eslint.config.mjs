@@ -54,7 +54,7 @@ const eslintConfig = [
       "react/react-in-jsx-scope": "off", // Disable to avoid previous errors
       "@typescript-eslint/no-explicit-any": "off", // Allow explicit any
     },
-    },
+    
     // Add React settings
     settings: {
       react: {
