@@ -52,6 +52,8 @@ const eslintConfig = [
       "react/no-unescaped-entities": "off",
       "@next/next/no-page-custom-font": "off",
       "react/react-in-jsx-scope": "off", // Disable to avoid previous errors
+      "@typescript-eslint/no-explicit-any": "off", // Allow explicit any
+    },
     },
     // Add React settings
     settings: {
