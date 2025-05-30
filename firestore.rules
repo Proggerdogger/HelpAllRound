@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access to prevent unintended open collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users can only read and write their own profile data.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false; // Generally, users should not delete their own profiles directly
+    }
+
+    // Bookings rules
+    match /bookings/{bookingId} {
+      // Users can create a booking if the userId in the new document matches their auth uid.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // Authenticated users can read their own bookings.
+      // Admin (replace 'YOUR_ADMIN_UID' with your actual admin user ID) can read any booking.
+      allow read: if request.auth != null && 
+                    (resource.data.userId == request.auth.uid || request.auth.uid == 'YOUR_ADMIN_UID');
+
+      // Only an admin can update a booking (e.g., to change status after payment capture).
+      // Make sure to replace 'YOUR_ADMIN_UID' with your actual admin user ID.
+      allow update: if request.auth != null && request.auth.uid == 'YOUR_ADMIN_UID';
+
+      // For now, disallow deleting bookings. Can be changed to allow admin deletion.
+      // allow delete: if request.auth != null && request.auth.uid == 'YOUR_ADMIN_UID';
+      allow delete: if false;
+    }
+  }
+} 
