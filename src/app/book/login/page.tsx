@@ -50,7 +50,7 @@ export default function LoginPage() {
     try {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
-        'callback': (response: any) => {},
+        'callback': () => {},
         'expired-callback': () => {
           setError("reCAPTCHA verification expired. Please try sending the code again.");
           if (window.recaptchaVerifier && window.grecaptcha) {
