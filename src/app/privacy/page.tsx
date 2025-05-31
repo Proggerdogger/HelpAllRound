@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Footer from '@/app/Footer';
+
 
 const PrivacyPolicyPage = () => {
   // Helper function to render bullet points from an array of strings
@@ -188,7 +188,7 @@ const PrivacyPolicyPage = () => {
               </span>
             </Link>
           </div>
-          <Footer />
+         
         </section>
       </div>
     </div>
