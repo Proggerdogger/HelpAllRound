@@ -80,28 +80,38 @@ const PaymentMethodForm: React.FC<PaymentMethodDisplayProps> = () => {
   }, [loadingAuthState, currentUser, userProfile, fetchPaymentMethods]);
 
   const handleSetupNewCard = async () => {
+    console.log('[PaymentMethod.tsx] handleSetupNewCard triggered.');
+    console.log('[PaymentMethod.tsx] userProfile:', userProfile);
+    console.log('[PaymentMethod.tsx] userProfile?.stripeCustomerId:', userProfile?.stripeCustomerId);
+
     if (!userProfile?.stripeCustomerId) {
+        console.error('[PaymentMethod.tsx] Missing stripeCustomerId.');
         setAddCardError("Cannot add card without a customer ID.");
         return;
     }
     setAddCardError(null);
     setIsProcessingAddCard(true);
     try {
+      console.log('[PaymentMethod.tsx] Fetching /api/stripe/payment-methods/create-setup-intent with customerId:', userProfile.stripeCustomerId);
       const response = await fetch('/api/stripe/payment-methods/create-setup-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customerId: userProfile.stripeCustomerId }),
       });
       const data = await response.json();
+      console.log('[PaymentMethod.tsx] API response data:', data);
+
       if (data.error) {
+        console.error('[PaymentMethod.tsx] API returned error:', data.error);
         setAddCardError(data.error);
       } else {
+        console.log('[PaymentMethod.tsx] API success, clientSecret:', data.clientSecret);
         setAddCardClientSecret(data.clientSecret);
         setShowAddCardForm(true);
       }
     } catch (err) {
+      console.error('[PaymentMethod.tsx] Fetch catch error:', err);
       setAddCardError("Failed to initialize card setup. Please try again.");
-      console.error(err);
     }
     setIsProcessingAddCard(false);
   };
