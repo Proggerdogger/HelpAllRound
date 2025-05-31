@@ -72,7 +72,7 @@ export default function AdminBookingsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ paymentIntentId }),
+        body: JSON.stringify({ paymentIntentId, bookingId }),
       });
 
       const data = await response.json();
