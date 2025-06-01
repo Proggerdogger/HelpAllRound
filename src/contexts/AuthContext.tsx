@@ -13,14 +13,14 @@ interface UserProfile extends DocumentData {
   stripeCustomerId?: string | null;
   createdAt?: any; // Firestore Timestamp
   lastLoginAt?: any; // Firestore Timestamp
-  // Add any other fields you store in your user profile
+  
 }
 
 interface AuthContextType {
   currentUser: User | null;
   userProfile: UserProfile | null;
   loadingAuthState: boolean;
-  // You can add more specific loading states if needed, e.g., loadingUserProfile
+  
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
