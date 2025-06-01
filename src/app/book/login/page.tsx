@@ -157,12 +157,12 @@ export default function LoginPage() {
 
         // ---- NEW: Call Cloud Function to create Stripe customer ----
         try {
-          const functions = getFunctions(); // Get Firebase Functions instance
-          const createStripeCustomer = httpsCallable(functions, 'createStripeCustomerForUser');
+          const functionsInstance = getFunctions(); // Renamed for clarity
+          const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
           await createStripeCustomer({ userId: user.uid, phoneNumber: user.phoneNumber });
           console.log("Stripe customer creation initiated for new user:", user.uid);
         } catch (stripeError) {
-          console.error("Error initiating Stripe customer creation:", stripeError);
+          console.error("Error initiating Stripe customer creation for new user:", stripeError);
           // Decide how to handle this error. Maybe set a flag for the user,
           // or allow them to proceed and try creating Stripe customer later.
           // For now, we'll just log it and proceed with login.
@@ -170,8 +170,26 @@ export default function LoginPage() {
         // ---- END NEW ----
 
       } else {
+        // User profile already exists, just update lastLoginAt
+        const userData = docSnap.data(); // Get user data
         await setDoc(userRef, { lastLoginAt: serverTimestamp() }, { merge: true });
-        console.log("User lastLoginAt updated in Firestore.");
+        console.log("Existing user logged in. Updated lastLoginAt.");
+
+        // ---- ADDED: Call Cloud Function if stripeCustomerId is missing for existing user ----
+        if (!userData?.stripeCustomerId) {
+          console.log("Existing user profile is missing stripeCustomerId. Attempting to create/retrieve Stripe customer.");
+          try {
+            const functionsInstance = getFunctions();
+            const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
+            // Pass phoneNumber from auth (user.phoneNumber) or from existing userData if available
+            const phoneNumberForFunction = user.phoneNumber || userData?.phoneNumber || null;
+            await createStripeCustomer({ userId: user.uid, phoneNumber: phoneNumberForFunction });
+            console.log("Stripe customer creation/retrieval initiated for existing user:", user.uid);
+          } catch (stripeError) {
+            console.error("Error initiating Stripe customer creation for existing user:", stripeError);
+          }
+        }
+        // ---- END ADDED ----
       }
       
       router.push('/book/bookingform'); 
