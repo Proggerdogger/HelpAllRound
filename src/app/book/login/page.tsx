@@ -157,12 +157,13 @@ export default function LoginPage() {
 
         // ---- NEW: Call Cloud Function to create Stripe customer ----
         try {
-          const functionsInstance = getFunctions(); // Renamed for clarity
+          const functionsInstance = getFunctions(auth.app); // Explicitly pass auth.app
           const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
           await createStripeCustomer({ userId: user.uid, phoneNumber: user.phoneNumber });
           console.log("Stripe customer creation initiated for new user:", user.uid);
-        } catch (stripeError) {
-          console.error("Error initiating Stripe customer creation for new user:", stripeError);
+        } catch (stripeError: any) { // Added :any to allow access to sub-properties
+          console.error("Error initiating Stripe customer creation for new user (raw error object):", stripeError);
+          console.error(`Error details: code: ${stripeError?.code}, message: ${stripeError?.message}, details:`, stripeError?.details);
           // Decide how to handle this error. Maybe set a flag for the user,
           // or allow them to proceed and try creating Stripe customer later.
           // For now, we'll just log it and proceed with login.
@@ -179,14 +180,14 @@ export default function LoginPage() {
         if (!userData?.stripeCustomerId) {
           console.log("Existing user profile is missing stripeCustomerId. Attempting to create/retrieve Stripe customer.");
           try {
-            const functionsInstance = getFunctions();
+            const functionsInstance = getFunctions(auth.app); // Explicitly pass auth.app
             const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
-            // Pass phoneNumber from auth (user.phoneNumber) or from existing userData if available
             const phoneNumberForFunction = user.phoneNumber || userData?.phoneNumber || null;
             await createStripeCustomer({ userId: user.uid, phoneNumber: phoneNumberForFunction });
             console.log("Stripe customer creation/retrieval initiated for existing user:", user.uid);
-          } catch (stripeError) {
-            console.error("Error initiating Stripe customer creation for existing user:", stripeError);
+          } catch (stripeError: any) { // Added :any to allow access to sub-properties
+            console.error("Error initiating Stripe customer creation for existing user (raw error object):", stripeError);
+            console.error(`Error details: code: ${stripeError?.code}, message: ${stripeError?.message}, details:`, stripeError?.details);
           }
         }
         // ---- END ADDED ----
