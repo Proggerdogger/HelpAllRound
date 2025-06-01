@@ -57,13 +57,17 @@ interface CreateStripeCustomerPayload {
 
 export const createStripeCustomerForUser = functions.https.onCall(
   async (data: any, context: any) => {
+    // Log incoming data and context for debugging
+    functions.logger.info("createStripeCustomerForUser called. Data:", data);
+    functions.logger.info("createStripeCustomerForUser called. Context:", context);
+
     if (!stripe) {
       functions.logger.error(
         "Stripe SDK is not initialized. Ensure STRIPE_SECRET env var is set and SDK initialized."
       );
       throw new functions.https.HttpsError(
         "internal",
-        "Stripe integration is not properly configured."
+        "Stripe integration is not properly configured. SDK not initialized."
       );
     }
 
@@ -118,7 +122,23 @@ export const createStripeCustomerForUser = functions.https.onCall(
         customerData.phone = phoneNumber;
       }
 
-      const stripeCustomer = await stripe.customers.create(customerData);
+      let stripeCustomer;
+      try {
+        stripeCustomer = await stripe.customers.create(customerData);
+      } catch (stripeApiError: any) {
+        functions.logger.error(
+          `Stripe API error during customer creation for ${userId}:`,
+          stripeApiError
+        );
+        // Pass along a more specific error if available (e.g., Stripe's error code or message)
+        const errorMessage = stripeApiError.message || "Stripe API failed to create customer.";
+        const errorCode = stripeApiError.code || "internal";
+        throw new functions.https.HttpsError(
+          errorCode === "internal" ? "internal" : "aborted", // Use 'aborted' for Stripe specific errors unless it's truly internal
+          `Stripe Error: ${errorMessage}`
+        );
+      }
+      
       const stripeCustomerId = stripeCustomer.id;
       functions.logger.log(
         `Created Stripe customer ${stripeCustomerId} for user ${userId}`
@@ -137,9 +157,15 @@ export const createStripeCustomerForUser = functions.https.onCall(
       functions.logger.error(
         `Error creating Stripe customer for ${userId}:`, error
       );
+      // Ensure error.message is a string, and provide a default if not.
+      const message = (typeof error.message === 'string' ? error.message : "An unexpected error occurred during Stripe customer creation.");
+      // If it's already an HttpsError, rethrow it, otherwise wrap it.
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
       throw new functions.https.HttpsError(
         "internal",
-        error.message || "Stripe customer creation failed."
+        message
       );
     }
   }
