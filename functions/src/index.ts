@@ -57,6 +57,12 @@ if (stripeSecretKeyFromEnv) {
   );
 }
 
+// Stripe SDK initialization REMAINS REMOVED for this step
+
+// Minimal payload interface, or just use 'any' for 'data'
+// interface BasicPayload {
+//   userId: string;
+// }
 
 interface CreateStripeCustomerPayload {
   userId: string;
@@ -67,7 +73,7 @@ export const createStripeCustomerForUser = functions.https.onCall(
   async (data: any, context: any) => {
     // Log incoming data and context for debugging
     functions.logger.info("createStripeCustomerForUser called. Data:", data);
-    functions.logger.info("createStripeCustomerForUser called. Context:", context);
+    // functions.logger.info("createStripeCustomerForUser called. Context:", context); // Context is used, but can be logged if needed for deep debug
 
     if (!stripe) {
       functions.logger.error(
@@ -80,11 +86,17 @@ export const createStripeCustomerForUser = functions.https.onCall(
     }
 
     if (!context || !context.auth) {
+      functions.logger.error(
+        "Authentication check failed: context or context.auth is missing. Full context:",
+        context // Log the entire context object
+      );
       throw new functions.https.HttpsError(
         "unauthenticated",
         "The function must be called while authenticated."
       );
     }
+    // If context.auth exists, log the UID for confirmation
+    functions.logger.info("Authentication successful. Context auth UID:", context.auth.uid);
 
     const payload = data as CreateStripeCustomerPayload;
     const userId = payload.userId;
@@ -182,7 +194,7 @@ export const createStripeCustomerForUser = functions.https.onCall(
 /**
  * A minimal callable function for testing deployment.
  */
-export const helloWorld = functions.https.onCall((data, context) => {
+export const helloWorld = functions.https.onCall((data, _context) => {
   functions.logger.info("--- helloWorld function was called ---", { data });
   return {
     message: "Hello from Firebase Cloud Functions! (v2 - ESM)",
