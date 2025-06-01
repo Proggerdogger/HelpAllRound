@@ -2,6 +2,14 @@ import * as functions from "firebase-functions";
 import admin from "firebase-admin";
 import Stripe from "stripe"; // Stripe import RE-ADDED
 
+// Log the environment variable status immediately
+const stripeSecretKeyFromEnv = process.env.STRIPE_SECRET;
+if (stripeSecretKeyFromEnv) {
+  functions.logger.info("STRIPE_SECRET environment variable FOUND.");
+} else {
+  functions.logger.warn("STRIPE_SECRET environment variable NOT FOUND. Stripe SDK will not be initialized.");
+}
+
 // Config related interfaces RE-ADDED
 // interface StripeConfig {
 //   secret?: string;
@@ -13,7 +21,13 @@ import Stripe from "stripe"; // Stripe import RE-ADDED
 // Initialize Firebase Admin SDK (do this once)
 // For a truly minimal test, you could even comment this out if it's not strictly needed
 // by the functions.https.onCall wrapper itself, though it's standard practice.
-admin.initializeApp();
+try {
+  admin.initializeApp();
+  functions.logger.info("Firebase Admin SDK initialized successfully.");
+} catch (e) {
+    functions.logger.error("Firebase Admin SDK failed to initialize", e);
+    // If admin SDK fails, Stripe SDK might also have issues or might not be relevant to initialize
+}
 
 // functions.config() call ENTIRELY REMOVED
 // const config = functions.config() as MyFunctionsConfig; 
@@ -23,7 +37,7 @@ admin.initializeApp();
 // Attempt to get Stripe secret key directly from process.env
 // The exact name might differ based on how Firebase sets it from functions.config
 // Common names: STRIPE_SECRET, STRIPE_SECRET_KEY
-const stripeSecretKeyFromEnv = process.env.STRIPE_SECRET;
+// const stripeSecretKeyFromEnv = process.env.STRIPE_SECRET; // Moved up
 
 let stripe: Stripe | null = null;
 
