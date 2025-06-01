@@ -57,12 +57,6 @@ if (stripeSecretKeyFromEnv) {
   );
 }
 
-// Stripe SDK initialization REMAINS REMOVED for this step
-
-// Minimal payload interface, or just use 'any' for 'data'
-// interface BasicPayload {
-//   userId: string;
-// }
 
 interface CreateStripeCustomerPayload {
   userId: string;
