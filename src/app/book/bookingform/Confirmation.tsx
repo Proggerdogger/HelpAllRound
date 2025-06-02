@@ -165,9 +165,7 @@ const Confirmation: React.FC<ConfirmationProps> = ({ formData }) => {
                         <span className="font-semibold">Payment Authorization ID:</span> <span className="text-xs">{formData.paymentIntentId}</span>
                      </p>
                   )}
-                  <p className="text-gray-700">
-                    <span className="font-semibold">Price:</span> $300.00 AUD (Authorized)
-                  </p>
+                  
                 </div>
               </div>
             </>
