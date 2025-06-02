@@ -14,8 +14,9 @@ import {
   // FirebaseError is not a direct export, errors are typically { code: string, message: string }
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"; 
-import { getFunctions, httpsCallable } from "firebase/functions"; // Import for Cloud Functions
-import { getApp } from "firebase/app"; // Add this import
+// Unused imports removed below
+// import { getFunctions, httpsCallable } from "firebase/functions"; // Import for Cloud Functions
+// import { getApp } from "firebase/app"; // Add this import
 
 // Payment logo paths
 const mastercardLogo = '/images/Mastercard.png';
