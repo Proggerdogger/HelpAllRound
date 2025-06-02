@@ -180,7 +180,7 @@ export default function LoginPage() {
           }
           console.log("Preparing to call Stripe function for new user. User UID:", userForFunction.uid);
 
-          const functionsInstance = getFunctions(auth.app); // Explicitly pass auth.app
+          const functionsInstance = getFunctions(); // Use default app instance
           const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
           await createStripeCustomer({ userId: userForFunction.uid, phoneNumber: userForFunction.phoneNumber });
           console.log("Stripe customer creation initiated for new user:", userForFunction.uid);
@@ -211,7 +211,7 @@ export default function LoginPage() {
             }
             console.log("Preparing to call Stripe function for existing user. User UID:", userForFunction.uid);
 
-            const functionsInstance = getFunctions(auth.app); // Explicitly pass auth.app
+            const functionsInstance = getFunctions(); // Use default app instance
             const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
             const phoneNumberForFunction = userForFunction.phoneNumber || userData?.phoneNumber || null;
             await createStripeCustomer({ userId: userForFunction.uid, phoneNumber: phoneNumberForFunction });
