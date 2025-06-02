@@ -1,7 +1,7 @@
 // components/Payment.tsx
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import ProgressIndicator from "./ProgressIndicator";
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
@@ -22,6 +22,16 @@ interface PaymentProps {
   // bookingData: any; 
 }
 
+interface StripePaymentMethod {
+  id: string;
+  card?: {
+    brand: string;
+    last4: string;
+    exp_month: number;
+    exp_year: number;
+  };
+}
+
 const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -30,6 +40,45 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
   const [processing, setProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+
+  // State for saved cards
+  const [savedCards, setSavedCards] = useState<StripePaymentMethod[]>([]);
+  const [selectedSavedCardId, setSelectedSavedCardId] = useState<string | null>(null);
+  const [showNewCardForm, setShowNewCardForm] = useState(false); // Initially false to show saved cards if available
+  const [fetchingCards, setFetchingCards] = useState(false);
+
+  const fetchSavedPaymentMethods = useCallback(async (customerId: string) => {
+    setFetchingCards(true);
+    try {
+      const response = await fetch('/api/stripe/payment-methods/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId }),
+      });
+      const data = await response.json();
+      if (data.error) {
+        console.warn("Error fetching saved payment methods:", data.error);
+        setSavedCards([]); // Clear or handle error appropriately
+      } else {
+        setSavedCards(data.paymentMethods || []);
+        if (data.defaultPaymentMethodId && (data.paymentMethods || []).length > 0) {
+          setSelectedSavedCardId(data.defaultPaymentMethodId);
+          setShowNewCardForm(false); // Show saved cards by default if a default exists
+        } else if ((data.paymentMethods || []).length > 0) {
+            // If no default, but cards exist, select the first one
+            setSelectedSavedCardId(data.paymentMethods[0].id);
+            setShowNewCardForm(false);
+        } else {
+          setShowNewCardForm(true); // No saved cards, show new card form
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load saved payment methods:", err);
+      setSavedCards([]);
+      setShowNewCardForm(true); // Error fetching, default to new card form
+    }
+    setFetchingCards(false);
+  }, []);
 
   useEffect(() => {
     if (loadingAuthState || !currentUser) {
@@ -52,12 +101,19 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
         console.error("Error creating PaymentIntent:", data.error);
       } else {
         setClientSecret(data.clientSecret);
+        const currentStripeCustomerId = data.customerId || userProfile?.stripeCustomerId;
+
+        if (currentStripeCustomerId) {
+            fetchSavedPaymentMethods(currentStripeCustomerId);
+        }
+
         if (data.customerId && currentUser) {
           if (!userProfile?.stripeCustomerId || userProfile.stripeCustomerId !== data.customerId) {
             try {
               const userRef = doc(db, 'users', currentUser.uid);
               await setDoc(userRef, { stripeCustomerId: data.customerId }, { merge: true });
               console.log("Stripe Customer ID updated in Firestore for user:", currentUser.uid);
+              // Note: AuthContext will pick up this change and re-fetch profile if using onSnapshot
             } catch (firestoreError) {
               console.error("Failed to update Stripe Customer ID in Firestore:", firestoreError);
             }
@@ -68,8 +124,9 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
     .catch(err => {
         console.error("Fetch error for PaymentIntent:", err);
         setError("Failed to initialize payment. Please try again.");
+        setShowNewCardForm(true); // Default to new card form on PI error
     });
-  }, [currentUser, userProfile, loadingAuthState]);
+  }, [currentUser, userProfile?.stripeCustomerId, loadingAuthState, fetchSavedPaymentMethods]); // Added userProfile.stripeCustomerId and fetchSavedPaymentMethods
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -83,23 +140,34 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
       return;
     }
 
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      setError("Card details are not valid. Please check your input.");
-      return;
-    }
-
     setProcessing(true);
     setError(null);
 
+    let paymentMethodOptions: any;
+
+    if (!showNewCardForm && selectedSavedCardId) {
+        console.log("Using saved card:", selectedSavedCardId);
+        paymentMethodOptions = { payment_method: selectedSavedCardId };
+    } else {
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) {
+            setError("Card details are not valid. Please check your input.");
+            setProcessing(false);
+            return;
+        }
+        console.log("Using new card details from CardElement.");
+        paymentMethodOptions = {
+            payment_method: {
+                card: cardElement,
+                // billing_details: { name: currentUser.displayName || userProfile?.displayName || 'Customer' },
+            },
+            setup_future_usage: 'off_session', // Save this new card
+        };
+    }
+
     const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-      clientSecret, 
-      {
-        payment_method: {
-          card: cardElement,
-          // billing_details: { name: currentUser.displayName || userProfile?.displayName || 'Customer' },
-        },
-      }
+      clientSecret,
+      paymentMethodOptions
     );
 
     if (stripeError) {
@@ -240,22 +308,55 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
             Your card will be authorized. You will only be charged the final amount after the service is completed.
           </p>
 
-          {!clientSecret && !error && (
+          {!clientSecret && !error && !fetchingCards && (
             <div className="text-center py-4">
               <p className="text-gray-600">Initializing payment system for {currentUser.phoneNumber}...</p>
             </div>
           )}
+          {fetchingCards && (
+             <div className="text-center py-4">
+              <p className="text-gray-600">Loading your saved payment methods...</p>
+            </div>
+          )}
 
-          {clientSecret && (
+          {clientSecret && !fetchingCards && (
             <form onSubmit={handleSubmit} className="space-y-6">
+            {savedCards.length > 0 && !showNewCardForm && (
+                <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Choose a saved card:
+                    </label>
+                    {savedCards.map(card => (
+                        <div key={card.id} 
+                             className={`p-3 border rounded-md cursor-pointer flex justify-between items-center ${selectedSavedCardId === card.id ? 'border-red-500 ring-2 ring-red-500' : 'border-gray-300'}`}
+                             onClick={() => setSelectedSavedCardId(card.id)}>
+                            <span>{card.card?.brand.toUpperCase()} ending in {card.card?.last4} (Expires {String(card.card?.exp_month).padStart(2, '0' )}/{card.card?.exp_year})</span>
+                            {selectedSavedCardId === card.id && <span className="text-red-500 text-xs">Selected</span>}
+                        </div>
+                    ))}
+                    <button type="button" onClick={() => { setShowNewCardForm(true); setSelectedSavedCardId(null); }} 
+                            className="text-sm text-red-600 hover:underline mt-2">
+                        Or use a new card
+                    </button>
+                </div>
+            )}
+
+            {(showNewCardForm || savedCards.length === 0) && (
               <div>
                 <label htmlFor="card-element" className="block text-sm font-medium text-gray-700 mb-1">
-                  Card Details
+                  {savedCards.length > 0 ? "New Card Details" : "Card Details"}
                 </label>
                 <div id="card-element" className="p-3 border border-gray-300 rounded-md shadow-sm">
                   <CardElement options={cardElementOptions} />
                 </div>
+                {savedCards.length > 0 && (
+                    <button type="button" onClick={() => setShowNewCardForm(false)} 
+                            className="text-sm text-red-600 hover:underline mt-2">
+                       Back to saved cards
+                    </button>
+                )}
               </div>
+            )}
 
               {error && (
                 <div role="alert" className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
