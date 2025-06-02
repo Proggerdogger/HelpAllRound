@@ -138,7 +138,22 @@ export default function LoginPage() {
     try {
       const userCredential: UserCredential = await window.confirmationResult.confirm(otp);
       const user = userCredential.user;
-      console.log("User authenticated:", user.uid, user.phoneNumber);
+      console.log("User authenticated (from userCredential):", user.uid, user.phoneNumber);
+
+      // ---- Log current auth state ----
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        console.log("auth.currentUser UID:", currentUser.uid);
+        console.log("auth.currentUser phoneNumber:", currentUser.phoneNumber);
+        currentUser.getIdToken().then(token => {
+          console.log("auth.currentUser ID Token obtained:", !!token);
+        }).catch(err => {
+          console.error("Error getting ID token from auth.currentUser:", err);
+        });
+      } else {
+        console.error("auth.currentUser is null immediately after confirmation!");
+      }
+      // ---- End Log current auth state ----
 
       const userRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(userRef);
@@ -157,10 +172,18 @@ export default function LoginPage() {
 
         // ---- NEW: Call Cloud Function to create Stripe customer ----
         try {
+          // Ensure we use the latest currentUser state if possible, or the one from credential
+          const userForFunction = auth.currentUser || user; 
+          if (!userForFunction) {
+            console.error("User object is null before calling Stripe function for new user.");
+            throw new Error("User not available for Stripe customer creation.");
+          }
+          console.log("Preparing to call Stripe function for new user. User UID:", userForFunction.uid);
+
           const functionsInstance = getFunctions(auth.app); // Explicitly pass auth.app
           const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
-          await createStripeCustomer({ userId: user.uid, phoneNumber: user.phoneNumber });
-          console.log("Stripe customer creation initiated for new user:", user.uid);
+          await createStripeCustomer({ userId: userForFunction.uid, phoneNumber: userForFunction.phoneNumber });
+          console.log("Stripe customer creation initiated for new user:", userForFunction.uid);
         } catch (stripeError: any) { // Added :any to allow access to sub-properties
           console.error("Error initiating Stripe customer creation for new user (raw error object):", stripeError);
           console.error(`Error details: code: ${stripeError?.code}, message: ${stripeError?.message}, details:`, stripeError?.details);
@@ -180,11 +203,19 @@ export default function LoginPage() {
         if (!userData?.stripeCustomerId) {
           console.log("Existing user profile is missing stripeCustomerId. Attempting to create/retrieve Stripe customer.");
           try {
+            // Ensure we use the latest currentUser state if possible, or the one from credential
+            const userForFunction = auth.currentUser || user;
+            if (!userForFunction) {
+              console.error("User object is null before calling Stripe function for existing user.");
+              throw new Error("User not available for Stripe customer creation.");
+            }
+            console.log("Preparing to call Stripe function for existing user. User UID:", userForFunction.uid);
+
             const functionsInstance = getFunctions(auth.app); // Explicitly pass auth.app
             const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
-            const phoneNumberForFunction = user.phoneNumber || userData?.phoneNumber || null;
-            await createStripeCustomer({ userId: user.uid, phoneNumber: phoneNumberForFunction });
-            console.log("Stripe customer creation/retrieval initiated for existing user:", user.uid);
+            const phoneNumberForFunction = userForFunction.phoneNumber || userData?.phoneNumber || null;
+            await createStripeCustomer({ userId: userForFunction.uid, phoneNumber: phoneNumberForFunction });
+            console.log("Stripe customer creation/retrieval initiated for existing user:", userForFunction.uid);
           } catch (stripeError: any) { // Added :any to allow access to sub-properties
             console.error("Error initiating Stripe customer creation for existing user (raw error object):", stripeError);
             console.error(`Error details: code: ${stripeError?.code}, message: ${stripeError?.message}, details:`, stripeError?.details);
