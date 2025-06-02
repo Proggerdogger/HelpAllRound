@@ -30,6 +30,8 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
   const [processing, setProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number | null>(null);
+  const [paymentCurrency, setPaymentCurrency] = useState<string | null>(null);
 
   useEffect(() => {
     if (loadingAuthState || !currentUser) {
@@ -52,6 +54,8 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
         console.error("Error creating PaymentIntent:", data.error);
       } else {
         setClientSecret(data.clientSecret);
+        setPaymentAmount(data.amount);
+        setPaymentCurrency(data.currency?.toUpperCase());
         if (data.customerId && currentUser) {
           if (!userProfile?.stripeCustomerId || userProfile.stripeCustomerId !== data.customerId) {
             try {
@@ -153,8 +157,7 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
         iconColor: "#fa755a",
       },
     },
-    // Hiding the postal code can be done if it's not required for your region/processing
-    // hidePostalCode: true,
+    hidePostalCode: true,
   };
 
   if (loadingAuthState) {
@@ -192,7 +195,7 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
             <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
                 <h2 className="text-2xl font-semibold text-green-600 mb-4">Payment Authorized!</h2>
                 <p className="text-gray-700 mb-6">
-                    Your card has been successfully authorized for $300.00 AUD. 
+                    Your card has been successfully authorized. 
                     You will be charged the final amount after the service is completed.
                 </p>
                 <p className="text-gray-600 text-sm">
@@ -238,7 +241,7 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
           <h2 className="text-xl font-semibold mb-2">Authorize Payment</h2>
           <p className="text-sm text-gray-600 mb-4">
             {userProfile?.displayName && <span className="block mb-1">Hi {userProfile.displayName}!</span>}
-            Your card will be authorized for $300.00 AUD. You will only be charged the final amount after the service is completed.
+            Your card will be authorized. You will only be charged the final amount after the service is completed.
           </p>
 
           {!clientSecret && !error && (
@@ -269,7 +272,7 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext }) => {
                 disabled={!stripe || !elements || processing || succeeded || !clientSecret}
                 className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                {processing ? "Processing..." : succeeded ? "Authorized!" : "Authorize $300.00 AUD"}
+                {processing ? "Processing..." : succeeded ? "Authorized!" : "Authorize Card"}
               </button>
             </form>
           )}
