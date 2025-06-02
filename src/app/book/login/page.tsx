@@ -15,6 +15,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"; 
 import { getFunctions, httpsCallable } from "firebase/functions"; // Import for Cloud Functions
+import { getApp } from "firebase/app"; // Add this import
 
 // Payment logo paths
 const mastercardLogo = '/images/Mastercard.png';
@@ -180,7 +181,7 @@ export default function LoginPage() {
           }
           console.log("Preparing to call Stripe function for new user. User UID:", userForFunction.uid);
 
-          const functionsInstance = getFunctions(); // Use default app instance
+          const functionsInstance = getFunctions(getApp()); // Use explicit default app instance
           const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
           await createStripeCustomer({ userId: userForFunction.uid, phoneNumber: userForFunction.phoneNumber });
           console.log("Stripe customer creation initiated for new user:", userForFunction.uid);
@@ -211,7 +212,7 @@ export default function LoginPage() {
             }
             console.log("Preparing to call Stripe function for existing user. User UID:", userForFunction.uid);
 
-            const functionsInstance = getFunctions(); // Use default app instance
+            const functionsInstance = getFunctions(getApp()); // Use explicit default app instance
             const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
             const phoneNumberForFunction = userForFunction.phoneNumber || userData?.phoneNumber || null;
             await createStripeCustomer({ userId: userForFunction.uid, phoneNumber: phoneNumberForFunction });
