@@ -143,14 +143,16 @@ export default function LoginPage() {
 
       // ---- Log current auth state ----
       const currentUser = auth.currentUser;
+      let idToken: string | null = null; // Declare idToken here
       if (currentUser) {
         console.log("auth.currentUser UID:", currentUser.uid);
         console.log("auth.currentUser phoneNumber:", currentUser.phoneNumber);
-        currentUser.getIdToken().then(token => {
-          console.log("auth.currentUser ID Token obtained:", !!token);
-        }).catch(err => {
-          console.error("Error getting ID token from auth.currentUser:", err);
-        });
+        try {
+          idToken = await currentUser.getIdToken(true); // Force refresh
+          console.log("auth.currentUser ID Token obtained for manual fetch:", !!idToken);
+        } catch (err) {
+          console.error("Error getting ID token from auth.currentUser for manual fetch:", err);
+        }
       } else {
         console.error("auth.currentUser is null immediately after confirmation!");
       }
@@ -173,18 +175,53 @@ export default function LoginPage() {
 
         // ---- NEW: Call Cloud Function to create Stripe customer ----
         try {
-          // Ensure we use the latest currentUser state if possible, or the one from credential
-          const userForFunction = auth.currentUser || user; 
+          const userForFunction = auth.currentUser || user;
           if (!userForFunction) {
             console.error("User object is null before calling Stripe function for new user.");
             throw new Error("User not available for Stripe customer creation.");
           }
-          console.log("Preparing to call Stripe function for new user. User UID:", userForFunction.uid);
+          console.log("Preparing to call Stripe function for new user (MANUAL FETCH). User UID:", userForFunction.uid);
 
-          const functionsInstance = getFunctions(getApp()); // Use explicit default app instance
-          const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
-          await createStripeCustomer({ userId: userForFunction.uid, phoneNumber: userForFunction.phoneNumber });
-          console.log("Stripe customer creation initiated for new user:", userForFunction.uid);
+          if (!idToken) {
+            console.error("No ID token available for manual fetch call. Aborting.");
+            throw new Error("ID token not available for Stripe customer creation.");
+          }
+
+          const functionUrl = "https://us-central1-helpallround-ea9da.cloudfunctions.net/createStripeCustomerForUser";
+          const payload = {
+            data: {
+              userId: userForFunction.uid,
+              phoneNumber: userForFunction.phoneNumber
+            }
+          };
+
+          console.log("Manual fetch URL:", functionUrl);
+          console.log("Manual fetch payload:", payload);
+          console.log("Manual fetch ID Token (first 10 chars):", idToken.substring(0, 10));
+
+
+          const response = await fetch(functionUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${idToken}`,
+            },
+            body: JSON.stringify(payload),
+          });
+
+          console.log("Manual fetch response status:", response.status);
+          const responseData = await response.json();
+          console.log("Manual fetch response data:", responseData);
+
+          if (!response.ok) {
+            // Log more detailed error from the function if available in responseData
+            const errorDetails = responseData.error || { message: "Unknown error from function (manual fetch)" };
+            console.error(`Error from manual fetch: ${response.status}`, errorDetails);
+            throw new Error(errorDetails.message || `Function call failed with status ${response.status}`);
+          }
+          
+          console.log("Stripe customer creation initiated via manual fetch for new user:", userForFunction.uid, responseData);
+
         } catch (stripeError: any) { // Added :any to allow access to sub-properties
           console.error("Error initiating Stripe customer creation for new user (raw error object):", stripeError);
           console.error(`Error details: code: ${stripeError?.code}, message: ${stripeError?.message}, details:`, stripeError?.details);
@@ -202,21 +239,59 @@ export default function LoginPage() {
 
         // ---- ADDED: Call Cloud Function if stripeCustomerId is missing for existing user ----
         if (!userData?.stripeCustomerId) {
-          console.log("Existing user profile is missing stripeCustomerId. Attempting to create/retrieve Stripe customer.");
+          console.log("Existing user profile is missing stripeCustomerId. Attempting to create/retrieve Stripe customer (MANUAL FETCH).");
           try {
-            // Ensure we use the latest currentUser state if possible, or the one from credential
             const userForFunction = auth.currentUser || user;
             if (!userForFunction) {
               console.error("User object is null before calling Stripe function for existing user.");
               throw new Error("User not available for Stripe customer creation.");
             }
-            console.log("Preparing to call Stripe function for existing user. User UID:", userForFunction.uid);
+             // We already fetched idToken above, ensure it's still valid/available
+            if (!idToken) {
+              console.error("No ID token available for manual fetch call (existing user). Aborting.");
+              // Potentially try to re-fetch token if necessary, or rely on earlier check
+              idToken = await (auth.currentUser?.getIdToken(true) || Promise.resolve(null));
+              if (!idToken) {
+                 throw new Error("ID token not available for Stripe customer creation (existing user).");
+              }
+              console.log("Re-fetched ID token for existing user call.");
+            }
 
-            const functionsInstance = getFunctions(getApp()); // Use explicit default app instance
-            const createStripeCustomer = httpsCallable(functionsInstance, 'createStripeCustomerForUser');
+            console.log("Preparing to call Stripe function for existing user (MANUAL FETCH). User UID:", userForFunction.uid);
+
+            const functionUrl = "https://us-central1-helpallround-ea9da.cloudfunctions.net/createStripeCustomerForUser";
             const phoneNumberForFunction = userForFunction.phoneNumber || userData?.phoneNumber || null;
-            await createStripeCustomer({ userId: userForFunction.uid, phoneNumber: phoneNumberForFunction });
-            console.log("Stripe customer creation/retrieval initiated for existing user:", userForFunction.uid);
+            const payload = {
+              data: {
+                userId: userForFunction.uid,
+                phoneNumber: phoneNumberForFunction
+              }
+            };
+            
+            console.log("Manual fetch URL (existing user):", functionUrl);
+            console.log("Manual fetch payload (existing user):", payload);
+            console.log("Manual fetch ID Token (first 10 chars, existing user):", idToken.substring(0, 10));
+
+            const response = await fetch(functionUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${idToken}`,
+              },
+              body: JSON.stringify(payload),
+            });
+
+            console.log("Manual fetch response status (existing user):", response.status);
+            const responseData = await response.json();
+            console.log("Manual fetch response data (existing user):", responseData);
+
+            if (!response.ok) {
+              const errorDetails = responseData.error || { message: "Unknown error from function (manual fetch existing user)" };
+              console.error(`Error from manual fetch (existing user): ${response.status}`, errorDetails);
+              throw new Error(errorDetails.message || `Function call failed with status ${response.status} (existing user)`);
+            }
+
+            console.log("Stripe customer creation/retrieval initiated via manual fetch for existing user:", userForFunction.uid, responseData);
           } catch (stripeError: any) { // Added :any to allow access to sub-properties
             console.error("Error initiating Stripe customer creation for existing user (raw error object):", stripeError);
             console.error(`Error details: code: ${stripeError?.code}, message: ${stripeError?.message}, details:`, stripeError?.details);
