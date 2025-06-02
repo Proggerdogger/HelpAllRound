@@ -13,7 +13,7 @@ const serviceAccountKeyPath = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY_PAT
 if (!admin.apps.length) {
   try {
     if (serviceAccountKeyPath) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
       const serviceAccount = require(serviceAccountKeyPath);
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
