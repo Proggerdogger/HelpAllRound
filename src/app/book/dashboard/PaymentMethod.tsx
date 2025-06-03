@@ -74,8 +74,9 @@ const PaymentMethodForm: React.FC<PaymentMethodFormProps> = ({
         setAddCardClientSecret(data.clientSecret);
         setShowAddCardForm(true);
       }
-    } catch (err) {
+    } catch (cardSetupError) {
       setAddCardError("Failed to initialize card setup. Please try again.");
+      console.error("Card setup initialization error:", cardSetupError);
     }
     setIsProcessingAddCard(false);
   };
@@ -141,9 +142,9 @@ const PaymentMethodForm: React.FC<PaymentMethodFormProps> = ({
       } else {
         await fetchPaymentMethods(); // Refresh to ensure UI consistency
       }
-    } catch (err) {
+    } catch (setDefaultError) {
       setOperationError("Failed to set default payment method.");
-      console.error(err);
+      console.error("Set default PM error:", setDefaultError);
     }
   };
 
@@ -162,9 +163,9 @@ const PaymentMethodForm: React.FC<PaymentMethodFormProps> = ({
       } else {
         await fetchPaymentMethods(); // Refresh the list
       }
-    } catch (err) {
+    } catch (deleteError) {
       setOperationError("Failed to delete payment method.");
-      console.error(err);
+      console.error("Delete PM error:", deleteError);
     }
   };
   
