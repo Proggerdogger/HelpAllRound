@@ -85,7 +85,6 @@ const Jobs = () => {
     let startHour = parseInt(startHourString, 10);
 
     // Basic AM/PM conversion for display if needed, or keep as 24-hour
-    const ampm = startHour >= 12 ? 'PM' : 'AM';
     if (startHour > 12) startHour -= 12;
     if (startHour === 0) startHour = 12; // Midnight case if applicable
 
