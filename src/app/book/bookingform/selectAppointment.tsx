@@ -145,13 +145,6 @@ const SelectAppointment: React.FC<SelectAppointmentProps> = ({ onBack, onNext, o
       return;
     }
 
-    // The selectedTime state already holds the "9-10" format.
-    // The formattedTime was for display purposes, but for backend logic, "9-10" is needed.
-    // const startHour = parseInt(selectedTime.split("-")[0]);
-    // const amPm = startHour >= 12 ? "PM" : "AM";
-    // const displayHour = startHour > 12 ? startHour - 12 : startHour;
-    // const formattedTime = `${displayHour}:00 ${amPm}`;
-
     onDataUpdate({
       selectedDate: selectedDate.toISOString().split("T")[0],
       selectedTime: selectedTime, // Pass the raw "9-10" slot
