@@ -12,7 +12,7 @@ import {
   ConfirmationResult,
   UserCredential,
   onAuthStateChanged,
-  User
+  
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"; 
 // Unused imports removed below
