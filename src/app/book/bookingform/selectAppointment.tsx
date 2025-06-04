@@ -305,7 +305,7 @@ const SelectAppointment: React.FC<SelectAppointmentProps> = ({ onBack, onNext, o
                 <div className="flex flex-col items-center space-y-2">
                   {timeSlots.map((time) => { // Iterate over all timeSlots to apply visual disabling logic
                     const slotStartHour = parseInt(time.split("-")[0], 10);
-                    let isActuallyUnavailable = unavailableSlots.includes(time);
+                    const isActuallyUnavailable = unavailableSlots.includes(time);
                     let isTooSoon = false;
                     let isTooLate = false;
 
