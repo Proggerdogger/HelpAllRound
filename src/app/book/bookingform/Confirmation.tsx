@@ -1,7 +1,6 @@
 // components/Confirmation.tsx
 'use client';
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ProgressIndicator from "./ProgressIndicator";
