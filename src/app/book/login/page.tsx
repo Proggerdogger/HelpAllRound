@@ -14,7 +14,7 @@ import {
   onAuthStateChanged,
   signInAnonymously,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"; 
+import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, writeBatch, getDocs, DocumentData } from "firebase/firestore"; 
 // Unused imports removed below
 // import { getFunctions, httpsCallable } from "firebase/functions"; // Import for Cloud Functions
 // import { getApp } from "firebase/app"; // Add this import
@@ -31,6 +31,12 @@ declare global {
     grecaptcha?: any; // For reCAPTCHA library
   }
 }
+
+// Add type for document snapshot
+type QueryDocumentSnapshot = {
+  ref: any;
+  data: () => DocumentData;
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -233,22 +239,24 @@ export default function LoginPage() {
       const user = userCredential.user;
       console.log("User authenticated (from userCredential):", user.uid, user.phoneNumber);
 
+      // Get the anonymous user's data before signing out
+      const anonymousUser = auth.currentUser;
+      const isAnonymous = anonymousUser?.isAnonymous;
+      const anonymousUid = isAnonymous ? anonymousUser?.uid : null;
+
       // ---- Log current auth state ----
       const currentUser = auth.currentUser;
-      let idToken: string | null = null; // Declare idToken here
+      let idToken: string | null = null;
       if (currentUser) {
         console.log("auth.currentUser UID:", currentUser.uid);
         console.log("auth.currentUser phoneNumber:", currentUser.phoneNumber);
         try {
-          idToken = await currentUser.getIdToken(true); // Force refresh
+          idToken = await currentUser.getIdToken(true);
           console.log("auth.currentUser ID Token obtained for manual fetch:", !!idToken);
         } catch (err) {
           console.error("Error getting ID token from auth.currentUser for manual fetch:", err);
         }
-      } else {
-        console.error("auth.currentUser is null immediately after confirmation!");
       }
-      // ---- End Log current auth state ----
 
       const userRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(userRef);
@@ -260,12 +268,46 @@ export default function LoginPage() {
           createdAt: serverTimestamp(),
           lastLoginAt: serverTimestamp(),
           stripeCustomerId: null,
-          // displayName and email are no longer added here
         };
         await setDoc(userRef, newUserProfile);
         console.log("New user profile created in Firestore.");
 
-        // ---- NEW: Call Cloud Function to create Stripe customer ----
+        // If there was an anonymous user, transfer their bookings
+        if (anonymousUid) {
+          try {
+            // Get all bookings for the anonymous user
+            const anonymousBookingsRef = collection(db, "bookings");
+            const q = query(anonymousBookingsRef, where("userId", "==", anonymousUid));
+            const querySnapshot = await getDocs(q);
+
+            // Transfer each booking to the new user
+            const batch = writeBatch(db);
+            querySnapshot.forEach((doc: QueryDocumentSnapshot) => {
+              const bookingRef = doc.ref;
+              batch.update(bookingRef, { userId: user.uid });
+            });
+
+            // Get all jobs for the anonymous user
+            const anonymousJobsRef = collection(db, "jobs");
+            const jobsQuery = query(anonymousJobsRef, where("customerId", "==", anonymousUid));
+            const jobsSnapshot = await getDocs(jobsQuery);
+
+            // Transfer each job to the new user
+            jobsSnapshot.forEach((doc: QueryDocumentSnapshot) => {
+              const jobRef = doc.ref;
+              batch.update(jobRef, { customerId: user.uid });
+            });
+
+            // Commit all updates
+            await batch.commit();
+            console.log("Successfully transferred bookings and jobs from anonymous user to new user");
+          } catch (transferError) {
+            console.error("Error transferring bookings and jobs:", transferError);
+            // Continue with login even if transfer fails
+          }
+        }
+
+        // ---- Call Cloud Function to create Stripe customer ----
         try {
           const userForFunction = auth.currentUser || user;
           if (!userForFunction) {
@@ -328,6 +370,41 @@ export default function LoginPage() {
         const userData = docSnap.data(); // Get user data
         await setDoc(userRef, { lastLoginAt: serverTimestamp() }, { merge: true });
         console.log("Existing user logged in. Updated lastLoginAt.");
+
+        // If there was an anonymous user, transfer their bookings
+        if (anonymousUid) {
+          try {
+            // Get all bookings for the anonymous user
+            const anonymousBookingsRef = collection(db, "bookings");
+            const q = query(anonymousBookingsRef, where("userId", "==", anonymousUid));
+            const querySnapshot = await getDocs(q);
+
+            // Transfer each booking to the existing user
+            const batch = writeBatch(db);
+            querySnapshot.forEach((doc: QueryDocumentSnapshot) => {
+              const bookingRef = doc.ref;
+              batch.update(bookingRef, { userId: user.uid });
+            });
+
+            // Get all jobs for the anonymous user
+            const anonymousJobsRef = collection(db, "jobs");
+            const jobsQuery = query(anonymousJobsRef, where("customerId", "==", anonymousUid));
+            const jobsSnapshot = await getDocs(jobsQuery);
+
+            // Transfer each job to the existing user
+            jobsSnapshot.forEach((doc: QueryDocumentSnapshot) => {
+              const jobRef = doc.ref;
+              batch.update(jobRef, { customerId: user.uid });
+            });
+
+            // Commit all updates
+            await batch.commit();
+            console.log("Successfully transferred bookings and jobs from anonymous user to existing user");
+          } catch (transferError) {
+            console.error("Error transferring bookings and jobs:", transferError);
+            // Continue with login even if transfer fails
+          }
+        }
 
         // ---- ADDED: Call Cloud Function if stripeCustomerId is missing for existing user ----
         if (!userData?.stripeCustomerId) {
