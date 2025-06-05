@@ -4,8 +4,8 @@
 import { useState, useEffect } from "react";
 import ProgressIndicator from "./ProgressIndicator";
 import { useAuth } from '@/contexts/AuthContext';
-import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+// import { db } from '@/lib/firebase'; // Removed as per ESLint error
+// import { doc, updateDoc } from 'firebase/firestore'; // Removed as per ESLint error
 import type { User } from 'firebase/auth'; // Import User type
 
 // Updated FormDataValues interface
@@ -67,8 +67,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
   const [billingAddress, setBillingAddress] = useState("");
 
   const [showNameForm, setShowNameForm] = useState(false);
-  const [inputFirstName, setInputFirstName] = useState("");
-  const [inputLastName, setInputLastName] = useState("");
+  // const [inputFirstName, setInputFirstName] = useState(""); // Removed as per ESLint error
+  // const [inputLastName, setInputLastName] = useState(""); // Removed as per ESLint error
 
   // Pre-fill address form if editing for the first time and fields are empty
   useEffect(() => {
@@ -88,9 +88,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
         setShowNameForm(true);
         if (userProfile.displayName) {
           const nameParts = userProfile.displayName.split(' ');
-          setInputFirstName(nameParts[0] || "");
+          // setInputFirstName(nameParts[0] || ""); // Removed as per ESLint error
           if (nameParts.length > 1) {
-            setInputLastName(nameParts.slice(1).join(' ') || "");
+            // setInputLastName(nameParts.slice(1).join(' ') || ""); // Removed as per ESLint error
           }
         }
       } else {
