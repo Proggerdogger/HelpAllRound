@@ -45,7 +45,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
   const [streetNumber, setStreetNumber] = useState(formData.streetNumber || "");
   const [streetName, setStreetName] = useState(formData.streetName || "");
   const [suburb, setSuburb] = useState(formData.suburb || "");
-  const [addressState, setAddressState] = useState(formData.state || ""); // Renamed to avoid conflict with React's state
+  const [addressState, setAddressState] = useState(formData.state || "");
   const [postcode, setPostcode] = useState(formData.postcode || "");
 
   const [isEditingAddress, setIsEditingAddress] = useState(
@@ -66,11 +66,44 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
   const [isBillingSameAsHome, setIsBillingSameAsHome] = useState(true);
   const [billingAddress, setBillingAddress] = useState("");
 
-  const [showNameForm, setShowNameForm] = useState(false);
-  const [inputFirstName, setInputFirstName] = useState(""); // Re-added state
-  const [inputLastName, setInputLastName] = useState(""); // Re-added state
-  const [isUpdatingName, setIsUpdatingName] = useState(false); // Re-added state
-  const [nameUpdateError, setNameUpdateError] = useState<string | null>(null); // Re-added state
+  // State for inline name editing if profile names are missing
+  const [shouldShowNameFields, setShouldShowNameFields] = useState(false);
+  const [inputFirstName, setInputFirstName] = useState("");
+  const [inputLastName, setInputLastName] = useState("");
+  const [nameFieldsError, setNameFieldsError] = useState<string | null>(null);
+  const [isSavingName, setIsSavingName] = useState(false); // For button disabled state
+
+  // Add state abbreviation mapping
+  const stateAbbreviations: { [key: string]: string } = {
+    'new south wales': 'NSW',
+    'victoria': 'VIC',
+    'queensland': 'QLD',
+    'south australia': 'SA',
+    'western australia': 'WA',
+    'tasmania': 'TAS',
+    'northern territory': 'NT',
+    'australian capital territory': 'ACT',
+    'nsw': 'NSW',
+    'vic': 'VIC',
+    'qld': 'QLD',
+    'sa': 'SA',
+    'wa': 'WA',
+    'tas': 'TAS',
+    'nt': 'NT',
+    'act': 'ACT'
+  };
+
+  const handleStateChange = (value: string) => {
+    const normalizedValue = value.toLowerCase().trim();
+    const abbreviation = stateAbbreviations[normalizedValue];
+    if (abbreviation) {
+      setAddressState(abbreviation);
+      setStateError("");
+    } else {
+      setAddressState(value.toUpperCase());
+      setStateError("");
+    }
+  };
 
   // Pre-fill address form if editing for the first time and fields are empty
   useEffect(() => {
@@ -86,58 +119,18 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
 
   useEffect(() => {
     if (!loadingAuthState && currentUser && userProfile) {
-      // Check if user is not anonymous before prompting for name
-      if (!currentUser.isAnonymous && (!userProfile.firstName || !userProfile.lastName)) {
-        setShowNameForm(true);
-        if (userProfile.displayName) {
-          const nameParts = userProfile.displayName.split(' ');
-          setInputFirstName(nameParts[0] || ""); 
-          if (nameParts.length > 1) {
-            setInputLastName(nameParts.slice(1).join(' ') || ""); 
-          }
-        }
+      const namesMissing = !userProfile.firstName || !userProfile.lastName;
+      if (!currentUser.isAnonymous && namesMissing) {
+        setShouldShowNameFields(true);
+        setInputFirstName(userProfile.firstName || (userProfile.displayName?.split(' ')[0] || ""));
+        setInputLastName(userProfile.lastName || (userProfile.displayName?.split(' ').slice(1).join(' ') || ""));
       } else {
-        setShowNameForm(false);
+        setShouldShowNameFields(false);
       }
     } else if (!loadingAuthState && !currentUser) {
       // Parent handles redirection
     }
   }, [userProfile, currentUser, loadingAuthState]);
-
-  const handleNameSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!inputFirstName.trim() || !inputLastName.trim()) {
-      setNameUpdateError("First and last names cannot be empty.");
-      return;
-    }
-    if (!currentUser) {
-      setNameUpdateError("No user logged in.");
-      return;
-    }
-    if (currentUser.isAnonymous) {
-      setNameUpdateError("Cannot set name for anonymous users."); // Should not happen if form isn't shown
-      setShowNameForm(false); // Hide form if somehow shown for anonymous user
-      return;
-    }
-
-    setIsUpdatingName(true);
-    setNameUpdateError(null);
-    try {
-      const userDocRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userDocRef, {
-        firstName: inputFirstName.trim(),
-        lastName: inputLastName.trim(),
-        displayName: `${inputFirstName.trim()} ${inputLastName.trim()}` // Also update displayName
-      });
-      // Optionally, refresh userProfile from AuthContext or assume it will update
-      setShowNameForm(false);
-    } catch (error) {
-      console.error("Error updating name:", error);
-      setNameUpdateError("Failed to update name. Please try again.");
-    } finally {
-      setIsUpdatingName(false);
-    }
-  };
 
   const validateAddress = (): boolean => {
     let isValid = true;
@@ -180,9 +173,37 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
     return isValid;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    setNameFieldsError(null);
+    setContactPhoneNumberError("");
+
+    // Validate and save name if fields are shown and user is not anonymous
+    if (shouldShowNameFields && currentUser && !currentUser.isAnonymous) {
+      if (!inputFirstName.trim() || !inputLastName.trim()) {
+        setNameFieldsError("First and last names are required.");
+        return;
+      }
+      setIsSavingName(true);
+      try {
+        const userDocRef = doc(db, "users", currentUser.uid);
+        await updateDoc(userDocRef, {
+          firstName: inputFirstName.trim(),
+          lastName: inputLastName.trim(),
+          displayName: `${inputFirstName.trim()} ${inputLastName.trim()}`,
+        });
+        setShouldShowNameFields(false); // Hide fields after successful update
+      } catch (error) {
+        console.error("Error updating name:", error);
+        setNameFieldsError("Failed to save name. Please try again.");
+        setIsSavingName(false);
+        return;
+      } finally {
+        setIsSavingName(false);
+      }
+    }
+
     if (isEditingAddress && !validateAddress()) {
-      return; // Stop if editing address and validation fails
+      return; 
     }
 
     if (currentUser && currentUser.isAnonymous) {
@@ -194,8 +215,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
         return;
       }
     }
-    setContactPhoneNumberError("");
-
+    
     onDataUpdate({
       unitNumber: unitNumber.trim(),
       streetNumber: streetNumber.trim(),
@@ -217,7 +237,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
   const handleSaveAddress = () => {
     if (validateAddress()) {
       setIsEditingAddress(false);
-      setAddressError(""); // Clear general error on successful save
+      setAddressError(""); 
     }
   };
 
@@ -251,50 +271,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
     );
   }
 
-  // Show name form if required and user is not anonymous
-  if (showNameForm && currentUser && !currentUser.isAnonymous) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex justify-center items-center p-6">
-        <div className="text-center w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
-          <h1 className="text-2xl font-bold text-red-500 mb-6">Welcome!</h1>
-          <p className="text-gray-700 mb-4">Please tell us your name to continue.</p>
-          <form onSubmit={handleNameSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 text-left">First Name <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                id="firstName"
-                value={inputFirstName}
-                onChange={(e) => setInputFirstName(e.target.value)}
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
-              />
-            </div>
-            <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 text-left">Last Name <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                id="lastName"
-                value={inputLastName}
-                onChange={(e) => setInputLastName(e.target.value)}
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
-              />
-            </div>
-            {nameUpdateError && <p className="text-xs text-red-500">{nameUpdateError}</p>}
-            <button
-              type="submit"
-              disabled={isUpdatingName}
-              className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-gray-400"
-            >
-              {isUpdatingName ? "Saving..." : "Save Name and Continue"}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   const getFormattedAddress = () => {
     if (!streetNumber && !streetName && !suburb && !addressState && !postcode && !unitNumber) return "No address entered";
     return `${unitNumber ? unitNumber + '/' : ''}${streetNumber} ${streetName}, ${suburb}, ${addressState.toUpperCase()} ${postcode}`.replace(/^, |, $/g, '').replace(/ , /g, ', ').trim();
@@ -323,6 +299,39 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
               {formData.issueDescription || <span className="text-gray-400">No issue description provided.</span>}
             </p>
           </div>
+
+          {/* Inline Name Fields - Shown if names are missing for non-anonymous user */}
+          {shouldShowNameFields && currentUser && !currentUser.isAnonymous && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md mb-6" role="alert">
+              <p className="font-bold mb-2">Please provide your name to continue:</p>
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="inputFirstName" className="block text-sm font-medium text-gray-700 text-left">First Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    id="inputFirstName"
+                    value={inputFirstName}
+                    onChange={(e) => setInputFirstName(e.target.value)}
+                    required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="inputLastName" className="block text-sm font-medium text-gray-700 text-left">Last Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    id="inputLastName"
+                    value={inputLastName}
+                    onChange={(e) => setInputLastName(e.target.value)}
+                    required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
+                  />
+                </div>
+                {nameFieldsError && <p className="text-xs text-red-600 mt-1">{nameFieldsError}</p>}
+              </div>
+               {/* The main submit button will handle saving this along with address */}
+            </div>
+          )}
 
           <div className="bg-gray-200 p-6 rounded-lg">
             <div className="bg-white p-4 rounded-lg mb-4">
@@ -367,7 +376,16 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="addressState" className="block text-xs font-medium text-gray-700">State <span className="text-red-500">*</span></label>
-                      <input type="text" id="addressState" value={addressState} onChange={(e) => { setAddressState(e.target.value.toUpperCase()); setStateError(""); }} required placeholder="e.g., NSW" maxLength={3} className={`mt-1 block w-full px-3 py-2 border ${stateError ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm`} />
+                      <input 
+                        type="text" 
+                        id="addressState" 
+                        value={addressState} 
+                        onChange={(e) => handleStateChange(e.target.value)} 
+                        required 
+                        placeholder="e.g., NSW or New South Wales" 
+                        maxLength={20}
+                        className={`mt-1 block w-full px-3 py-2 border ${stateError ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm`} 
+                      />
                       {stateError && <p className="text-xs text-red-500 mt-1">{stateError}</p>}
                     </div>
                     <div>
@@ -528,10 +546,10 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
           <div className="flex justify-center">
             <button
               onClick={handleSubmit}
-              disabled={isEditingAddress}
+              disabled={isEditingAddress || isSavingName} // Also disable if saving name
               className="w-1/3 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              They are correct!
+              {isSavingName ? "Saving Name..." : "They are correct!"}
             </button>
           </div>
         </div>
