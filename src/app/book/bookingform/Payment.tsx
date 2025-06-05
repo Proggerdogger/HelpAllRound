@@ -11,12 +11,11 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable, type HttpsCallableResult } from "firebase/functions";
 
-// Make sure to call loadStripe outside of a component's render to avoid
-// recreating the Stripe object on every render.
-// Use your publishable key here.
+
+
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-// Updated FormDataValues to match the parent
+
 interface FormDataValues {
   unitNumber?: string;
   streetNumber: string;
