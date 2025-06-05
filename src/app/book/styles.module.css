@@ -1,0 +1,32 @@
+.fill-rule-evenodd {
+  fill-rule: evenodd;
+}
+
+.fill-ffbb00 {
+  fill: #ffbb00;
+}
+
+.fill-opacity-98077 {
+  fill-opacity: 0.98077;
+}
+
+.stroke-linejoin-round {
+  stroke-linejoin: round;
+}
+
+.stroke-width-1_3084 {
+  stroke-width: 1.3084;
+}
+
+.fill-white {
+  stop-color: #ffffff;
+}
+
+.fill-white-opacity-0 {
+  stop-color: #ffffff;
+  stop-opacity: 0;
+}
+
+.fill-radialGradient915 {
+  fill: url(#radialGradient915);
+} 
