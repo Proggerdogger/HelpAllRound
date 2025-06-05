@@ -189,9 +189,17 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext, formData }) => {
         };
     }
 
-    console.log("PAYMENT.TSX: Calling stripe.confirmCardPayment with clientSecret (last 10): ...", clientSecret?.slice(-10), "and options:", paymentMethodOptions);
+    // console.log("PAYMENT.TSX: Calling stripe.confirmCardPayment with clientSecret (last 10): ...", clientSecret?.slice(-10), "and options:", paymentMethodOptions);
+    // Log more of the client secret for debugging this specific issue:
+    if (clientSecret) {
+      console.log("PAYMENT.TSX: FULL Client Secret for confirmCardPayment (DEBUG - REMOVE FOR PROD):", clientSecret);
+    } else {
+      console.error("PAYMENT.TSX: Client Secret is NULL before calling confirmCardPayment!");
+    }
+    console.log("PAYMENT.TSX: paymentMethodOptions for confirmCardPayment:", paymentMethodOptions);
+
     const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-      clientSecret,
+      clientSecret!, // Added non-null assertion as we expect it to be set, or error handled above
       paymentMethodOptions
     );
 
