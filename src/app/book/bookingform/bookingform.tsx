@@ -69,8 +69,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
   const [showNameForm, setShowNameForm] = useState(false);
   const [inputFirstName, setInputFirstName] = useState("");
   const [inputLastName, setInputLastName] = useState("");
-  const [isUpdatingName, setIsUpdatingName] = useState(false);
-  const [nameUpdateError, setNameUpdateError] = useState<string | null>(null);
 
   // Pre-fill address form if editing for the first time and fields are empty
   useEffect(() => {
@@ -195,33 +193,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
     setPostcode(formData.postcode || "");
     setAddressError(""); setStreetNumberError(""); setStreetNameError(""); 
     setSuburbError(""); setStateError(""); setPostcodeError("");
-  };
-
-  const handleNameSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setNameUpdateError(null);
-    if (!inputFirstName.trim() || !inputLastName.trim()) {
-      setNameUpdateError("First and last names cannot be empty.");
-      return;
-    }
-    if (!currentUser) {
-      setNameUpdateError("No user logged in. Please refresh.");
-      return;
-    }
-    setIsUpdatingName(true);
-    try {
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      await updateDoc(userDocRef, {
-        firstName: inputFirstName.trim(),
-        lastName: inputLastName.trim(),
-      });
-      setShowNameForm(false);
-    } catch (error) {
-      console.error("Error updating name:", error);
-      setNameUpdateError("Failed to update name. Please try again.");
-    } finally {
-      setIsUpdatingName(false);
-    }
   };
 
   // Loading and no-user states...
