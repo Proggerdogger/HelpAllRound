@@ -75,7 +75,9 @@ const DashboardContent = () => {
         try {
           await signOut(auth);
           console.log("User signed out successfully.");
-          router.push("/book/welcome");
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.href = "/book/welcome";
         } catch (error) {
           console.error("Error signing out: ", error);
           setCurrentPage("Dashboard");
@@ -83,7 +85,7 @@ const DashboardContent = () => {
       };
       handleSignOut();
     }
-  }, [currentPage, router]);
+  }, [currentPage]);
 
   useEffect(() => {
     if (!loadingAuthState && currentUser && userProfile?.stripeCustomerId) {
