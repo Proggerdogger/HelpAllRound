@@ -1,15 +1,32 @@
 'use client';
 
-import { Suspense } from "react";
-import DashboardContent from "./Dashboard"; // Changed to DashboardContent
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import Dashboard from './Dashboard';
 
-// The main export for the page, wrapping the content with Suspense
 export default function DashboardPage() {
-  return (
-    <Suspense fallback={<div>Loading page content...</div>}>
-      <DashboardContent />
-    </Suspense>
-  );
+  const { currentUser, loadingAuthState } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loadingAuthState && !currentUser) {
+      router.push('/book/login');
+    }
+  }, [currentUser, loadingAuthState, router]);
+
+  if (loadingAuthState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return null; // Will redirect in useEffect
+  }
+
+  return <Dashboard />;
 }
 
-//This page does not look good on mobile.
