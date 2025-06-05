@@ -116,9 +116,10 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext, formData }) => {
     .then(res => res.json())
     .then(async (data) => {
       if (data.error) {
+        console.error("PAYMENT.TSX: Error creating PaymentIntent from API:", data.error);
         setError(data.error);
-        console.error("Error creating PaymentIntent:", data.error);
       } else {
+        console.log("PAYMENT.TSX: Received clientSecret (last 10 chars): ...", data.clientSecret?.slice(-10), "and customerId:", data.customerId);
         setClientSecret(data.clientSecret);
         const currentStripeCustomerId = data.customerId || userProfile?.stripeCustomerId;
 
@@ -148,10 +149,13 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext, formData }) => {
   }, [currentUser, userProfile?.stripeCustomerId, loadingAuthState, fetchSavedPaymentMethods]); // Added userProfile.stripeCustomerId and fetchSavedPaymentMethods
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    console.log("PAYMENT.TSX: handleSubmit called. Stripe Ready:", !!stripe, "Elements Ready:", !!elements, "Client Secret (last 10 chars): ...", clientSecret?.slice(-10));
+
     event.preventDefault();
 
     if (!stripe || !elements || !clientSecret) {
       setError("Payment system is not ready. Please wait a moment and try again.");
+      console.error("PAYMENT.TSX: handleSubmit aborted - Stripe, Elements, or Client Secret not ready.");
       return;
     }
     if (!currentUser) {
@@ -165,16 +169,17 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext, formData }) => {
     let paymentMethodOptions: any;
 
     if (!showNewCardForm && selectedSavedCardId) {
-        console.log("Using saved card:", selectedSavedCardId);
+        console.log("PAYMENT.TSX: Attempting payment with SAVED card:", selectedSavedCardId);
         paymentMethodOptions = { payment_method: selectedSavedCardId };
     } else {
         const cardElement = elements.getElement(CardElement);
         if (!cardElement) {
             setError("Card details are not valid. Please check your input.");
+            console.error("PAYMENT.TSX: CardElement not found.");
             setProcessing(false);
             return;
         }
-        console.log("Using new card details from CardElement.");
+        console.log("PAYMENT.TSX: Attempting payment with NEW card details from CardElement.");
         paymentMethodOptions = {
             payment_method: {
                 card: cardElement,
@@ -184,6 +189,7 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext, formData }) => {
         };
     }
 
+    console.log("PAYMENT.TSX: Calling stripe.confirmCardPayment with clientSecret (last 10): ...", clientSecret?.slice(-10), "and options:", paymentMethodOptions);
     const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
       clientSecret,
       paymentMethodOptions
@@ -194,16 +200,18 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext, formData }) => {
       if (stripeError.type === "card_error" || stripeError.type === "validation_error") {
         // message is already user-friendly
       } else {
-        console.error("Stripe error:", stripeError);
+        console.error("PAYMENT.TSX: Stripe confirmCardPayment NON-CARD error:", stripeError);
         message = "An unexpected error occurred during payment. Please try again.";
       }
+      console.error("PAYMENT.TSX: Stripe confirmCardPayment FAILED:", stripeError);
       setError(message);
       setProcessing(false);
       return;
     }
 
+    console.log("PAYMENT.TSX: stripe.confirmCardPayment SUCCEEDED. PaymentIntent:", paymentIntent);
     if (paymentIntent && paymentIntent.status === 'requires_capture') {
-      console.log("PaymentIntent authorized:", paymentIntent);
+      console.log("PAYMENT.TSX: PaymentIntent status is 'requires_capture'. Proceeding to create booking.");
       if (paymentIntent.id && currentUser && formData) {
         console.log(`PaymentIntent ID ${paymentIntent.id} needs to be saved for booking by user ${currentUser.uid}`);
         setError(null);
@@ -231,11 +239,12 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext, formData }) => {
           const functions = getFunctions();
           const createBookingFn = httpsCallable(functions, 'createBooking');
 
+          console.log("PAYMENT.TSX: Calling 'createBooking' Cloud Function with payload:", bookingPayload);
           const bookingResult: HttpsCallableResult<any> = await createBookingFn(bookingPayload);
 
           // Assuming bookingResult.data is { success: true, bookingId: string, jobId: string, paymentIntentId: string }
           if (bookingResult.data && bookingResult.data.success) {
-            console.log("Booking created successfully via function:", bookingResult.data);
+            console.log("PAYMENT.TSX: 'createBooking' Cloud Function SUCCEEDED:", bookingResult.data);
             onNext({
               paymentIntentId: bookingResult.data.paymentIntentId,
               jobId: bookingResult.data.jobId,
@@ -244,7 +253,7 @@ const CheckoutForm: React.FC<PaymentProps> = ({ onBack, onNext, formData }) => {
           } else {
             // If function returns an error or success: false
             const message = (bookingResult.data as any)?.message || "Failed to save your booking after payment. Please contact support.";
-            console.error("Failed to create booking via function:", bookingResult.data);
+            console.error("PAYMENT.TSX: 'createBooking' Cloud Function FAILED or returned success:false. Data:", bookingResult.data, "Message:", message);
             setError(message);
             setSucceeded(false); // Revert succeeded state if booking fails
           }
