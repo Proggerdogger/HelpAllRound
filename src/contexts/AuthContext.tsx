@@ -34,25 +34,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // const [loadingUserProfile, setLoadingUserProfile] = useState(false); // New state for profile loading
 
   useEffect(() => {
-    // Listener for auth state changes
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
-      setCurrentUser(user);
-      setLoadingAuthState(false); // Auth state determined (user or null)
-      if (!user) {
-        setUserProfile(null); // Clear profile if user logs out
-      }
-      // The profile listener will be set up in the next useEffect, dependent on currentUser
-    });
+    let unsubscribeAuth: () => void;
+    let unsubscribeProfile: (() => void) | undefined;
 
-    // Cleanup auth subscription on unmount
-    return () => unsubscribeAuth();
+    const setupAuth = async () => {
+      unsubscribeAuth = auth.onAuthStateChanged((user) => {
+        console.log("[AuthContext] Auth state changed:", user?.uid);
+        setCurrentUser(user);
+        setLoadingAuthState(false);
+        
+        if (!user) {
+          setUserProfile(null);
+          return;
+        }
+      });
+    };
+
+    setupAuth();
+
+    return () => {
+      if (unsubscribeAuth) {
+        unsubscribeAuth();
+      }
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+    };
   }, []);
 
   useEffect(() => {
+    let unsubscribeProfile: (() => void) | undefined;
+
     if (currentUser) {
       // setLoadingUserProfile(true); // Indicate profile loading is starting
       const userRef = doc(db, 'users', currentUser.uid);
-      const unsubscribeProfile = onSnapshot(userRef, 
+      unsubscribeProfile = onSnapshot(userRef, 
         (docSnap) => {
           if (docSnap.exists()) {
             setUserProfile(docSnap.data() as UserProfile);
@@ -70,10 +86,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       );
       // Cleanup profile subscription when currentUser changes or on unmount
-      return () => unsubscribeProfile();
     } else {
       setUserProfile(null); // Clear profile if no current user
     }
+
+    return () => {
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+    };
   }, [currentUser]); // This effect runs when currentUser changes
 
   const value = {
