@@ -10,8 +10,14 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loadingAuthState && !currentUser) {
-      router.push('/book/login');
+    if (!loadingAuthState) {
+      if (!currentUser) {
+        // If no user is authenticated, redirect to login
+        router.replace('/book/login');
+      } else if (currentUser.isAnonymous) {
+        // If user is anonymous, redirect to login
+        router.replace('/book/login');
+      }
     }
   }, [currentUser, loadingAuthState, router]);
 
@@ -23,10 +29,11 @@ export default function DashboardPage() {
     );
   }
 
-  if (!currentUser) {
+  if (!currentUser || currentUser.isAnonymous) {
     return null; // Will redirect in useEffect
   }
 
   return <Dashboard />;
 }
 
+//This page does not look good on mobile.
