@@ -11,7 +11,7 @@ import PaymentMethod, { StripePaymentMethod } from "./PaymentMethod";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { auth } from "@/lib/firebase";
-import { signOut, browserLocalPersistence, setPersistence } from "firebase/auth";
+import { signOut, signInAnonymously } from "firebase/auth";
 
 
 const DashboardContent = () => {
@@ -76,12 +76,27 @@ const DashboardContent = () => {
         }
       }
 
-      // Clear any Firebase persistence
-      await setPersistence(auth, browserLocalPersistence);
-      
-      // Then sign out from Firebase
+      // Revoke the current user's token
+      if (currentUser) {
+        try {
+          await currentUser.getIdToken(true); // Force token refresh
+          console.log("User token refreshed before sign out");
+        } catch (error) {
+          console.error("Error refreshing token:", error);
+        }
+      }
+
+      // Sign out from Firebase
       await signOut(auth);
       console.log("User signed out successfully");
+
+      // Sign in anonymously to ensure clean state
+      try {
+        await signInAnonymously(auth);
+        console.log("Anonymous user created after logout");
+      } catch (error) {
+        console.error("Error creating anonymous user:", error);
+      }
       
       // Force a hard reload to clear all state and cache
       window.location.replace("/book/welcome");
@@ -89,7 +104,7 @@ const DashboardContent = () => {
       console.error("Error signing out: ", error);
       setCurrentPage("Dashboard");
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     const pageFromQuery = searchParams.get('page');
