@@ -11,7 +11,7 @@ import PaymentMethod, { StripePaymentMethod } from "./PaymentMethod";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { auth } from "@/lib/firebase";
-import { signOut, signInAnonymously } from "firebase/auth";
+import { signOut } from "firebase/auth";
 
 
 const DashboardContent = () => {
@@ -61,50 +61,35 @@ const DashboardContent = () => {
   }, [userProfile]);
 
   const handleSignOut = useCallback(async () => {
+    console.log("--- Starting Sign Out Process ---");
     try {
-      // First clear all local storage and session storage
+      // First, sign out from Firebase. This should trigger onAuthStateChanged listeners.
+      await signOut(auth);
+      console.log("Firebase signOut() completed.");
+      console.log("auth.currentUser after signOut call:", auth.currentUser); // Should be null
+
+      // Then, clear all client-side storage to be safe.
       localStorage.clear();
       sessionStorage.clear();
-      
-      // Clear any cached data
+      console.log("localStorage and sessionStorage cleared.");
+
+      // Clear cache as well
       if (window.caches) {
-        try {
-          const cacheNames = await window.caches.keys();
-          await Promise.all(cacheNames.map(name => window.caches.delete(name)));
-        } catch (e) {
-          console.error('Error clearing cache:', e);
-        }
+        const cacheNames = await window.caches.keys();
+        await Promise.all(cacheNames.map(name => window.caches.delete(name)));
+        console.log("Browser cache cleared.");
       }
 
-      // Revoke the current user's token
-      if (currentUser) {
-        try {
-          await currentUser.getIdToken(true); // Force token refresh
-          console.log("User token refreshed before sign out");
-        } catch (error) {
-          console.error("Error refreshing token:", error);
-        }
-      }
+      // Finally, redirect. A hard navigation is best.
+      console.log("Redirecting to /book/welcome...");
+      window.location.href = "/book/welcome";
 
-      // Sign out from Firebase
-      await signOut(auth);
-      console.log("User signed out successfully");
-
-      // Sign in anonymously to ensure clean state
-      try {
-        await signInAnonymously(auth);
-        console.log("Anonymous user created after logout");
-      } catch (error) {
-        console.error("Error creating anonymous user:", error);
-      }
-      
-      // Force a hard reload to clear all state and cache
-      window.location.replace("/book/welcome");
     } catch (error) {
-      console.error("Error signing out: ", error);
-      setCurrentPage("Dashboard");
+      console.error("--- Error during Sign Out Process ---", error);
+      // If signout fails, keep user on dashboard to see error
+      setCurrentPage("Dashboard"); 
     }
-  }, [currentUser]);
+  }, []);
 
   useEffect(() => {
     const pageFromQuery = searchParams.get('page');
