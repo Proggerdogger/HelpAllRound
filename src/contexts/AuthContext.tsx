@@ -33,69 +33,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loadingAuthState, setLoadingAuthState] = useState(true);
   // const [loadingUserProfile, setLoadingUserProfile] = useState(false); // New state for profile loading
 
+  // Effect for handling Firebase Authentication state changes
   useEffect(() => {
-    let unsubscribeAuth: () => void;
-    let unsubscribeProfile: (() => void) | undefined;
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      console.log("[AuthContext] Auth state changed. New user UID:", user?.uid || 'null');
+      setCurrentUser(user);
+      setLoadingAuthState(false);
+    });
 
-    const setupAuth = async () => {
-      unsubscribeAuth = auth.onAuthStateChanged((user) => {
-        console.log("[AuthContext] Auth state changed:", user?.uid);
-        setCurrentUser(user);
-        setLoadingAuthState(false);
-        
-        if (!user) {
-          setUserProfile(null);
-          return;
-        }
-      });
-    };
-
-    setupAuth();
-
+    // Cleanup subscription on unmount
     return () => {
-      if (unsubscribeAuth) {
-        unsubscribeAuth();
-      }
-      if (unsubscribeProfile) {
-        unsubscribeProfile();
-      }
+      console.log("[AuthContext] Unsubscribing from auth state changes.");
+      unsubscribeAuth();
     };
   }, []);
 
+  // Effect for listening to user profile changes in Firestore
   useEffect(() => {
-    let unsubscribeProfile: (() => void) | undefined;
-
-    if (currentUser) {
-      // setLoadingUserProfile(true); // Indicate profile loading is starting
-      const userRef = doc(db, 'users', currentUser.uid);
-      unsubscribeProfile = onSnapshot(userRef, 
-        (docSnap) => {
-          if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
-            console.log("[AuthContext] User profile updated from snapshot:", docSnap.data());
-          } else {
-            console.warn("[AuthContext] No user profile found in Firestore for authenticated user:", currentUser.uid);
-            setUserProfile(null);
-          }
-          // setLoadingUserProfile(false); // Profile loading finished
-        }, 
-        (error) => {
-          console.error("[AuthContext] Error listening to user profile snapshot:", error);
-          setUserProfile(null);
-          // setLoadingUserProfile(false); // Profile loading finished (with error)
-        }
-      );
-      // Cleanup profile subscription when currentUser changes or on unmount
-    } else {
-      setUserProfile(null); // Clear profile if no current user
+    if (!currentUser) {
+      setUserProfile(null);
+      return;
     }
 
-    return () => {
-      if (unsubscribeProfile) {
-        unsubscribeProfile();
+    const userRef = doc(db, 'users', currentUser.uid);
+    const unsubscribeProfile = onSnapshot(userRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setUserProfile(docSnap.data() as UserProfile);
+          console.log("[AuthContext] User profile updated from snapshot:", docSnap.data());
+        } else {
+          console.warn("[AuthContext] No user profile found in Firestore for user:", currentUser.uid);
+          setUserProfile(null);
+        }
+      },
+      (error) => {
+        console.error("[AuthContext] Error listening to user profile snapshot:", error);
+        setUserProfile(null);
       }
+    );
+
+    // Cleanup profile subscription when currentUser changes or on unmount
+    return () => {
+      console.log("[AuthContext] Unsubscribing from user profile changes for UID:", currentUser.uid);
+      unsubscribeProfile();
     };
-  }, [currentUser]); // This effect runs when currentUser changes
+  }, [currentUser]);
 
   const value = {
     currentUser,
