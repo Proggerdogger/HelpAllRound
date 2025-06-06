@@ -11,7 +11,7 @@ import PaymentMethod, { StripePaymentMethod } from "./PaymentMethod";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
+import { signOut, browserLocalPersistence, setPersistence } from "firebase/auth";
 
 
 const DashboardContent = () => {
@@ -75,6 +75,9 @@ const DashboardContent = () => {
           console.error('Error clearing cache:', e);
         }
       }
+
+      // Clear any Firebase persistence
+      await setPersistence(auth, browserLocalPersistence);
       
       // Then sign out from Firebase
       await signOut(auth);
