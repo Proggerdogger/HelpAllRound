@@ -12,13 +12,13 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
+
 
 const DashboardContent = () => {
   const [currentPage, setCurrentPage] = useState("Dashboard");
   const searchParams = useSearchParams();
   const { currentUser, userProfile, loadingAuthState } = useAuth();
-  const router = useRouter();
+ 
 
   const [cards, setCards] = useState<StripePaymentMethod[]>([]);
   const [defaultPaymentMethodId, setDefaultPaymentMethodId] = useState<string | null>(null);
