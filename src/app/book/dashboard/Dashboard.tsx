@@ -17,8 +17,9 @@ import { signOut } from "firebase/auth";
 const DashboardContent = () => {
   const [currentPage, setCurrentPage] = useState("Dashboard");
   const searchParams = useSearchParams();
+  
   const { currentUser, userProfile, loadingAuthState } = useAuth();
- 
+  
 
   const [cards, setCards] = useState<StripePaymentMethod[]>([]);
   const [defaultPaymentMethodId, setDefaultPaymentMethodId] = useState<string | null>(null);
@@ -59,6 +60,34 @@ const DashboardContent = () => {
     setIsLoadingPaymentMethods(false);
   }, [userProfile]);
 
+  const handleSignOut = useCallback(async () => {
+    try {
+      // First clear all local storage and session storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Clear any cached data
+      if (window.caches) {
+        try {
+          const cacheNames = await window.caches.keys();
+          await Promise.all(cacheNames.map(name => window.caches.delete(name)));
+        } catch (e) {
+          console.error('Error clearing cache:', e);
+        }
+      }
+      
+      // Then sign out from Firebase
+      await signOut(auth);
+      console.log("User signed out successfully");
+      
+      // Force a hard reload to clear all state and cache
+      window.location.replace("/book/welcome");
+    } catch (error) {
+      console.error("Error signing out: ", error);
+      setCurrentPage("Dashboard");
+    }
+  }, []);
+
   useEffect(() => {
     const pageFromQuery = searchParams.get('page');
     if (pageFromQuery) {
@@ -71,21 +100,9 @@ const DashboardContent = () => {
 
   useEffect(() => {
     if (currentPage === "Log Out") {
-      const handleSignOut = async () => {
-        try {
-          await signOut(auth);
-          console.log("User signed out successfully.");
-          localStorage.clear();
-          sessionStorage.clear();
-          window.location.href = "/book/welcome";
-        } catch (error) {
-          console.error("Error signing out: ", error);
-          setCurrentPage("Dashboard");
-        }
-      };
       handleSignOut();
     }
-  }, [currentPage]);
+  }, [currentPage, handleSignOut]);
 
   useEffect(() => {
     if (!loadingAuthState && currentUser && userProfile?.stripeCustomerId) {
