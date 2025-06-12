@@ -302,7 +302,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onBack, onNext, onDataUpdate,
 
           {/* Inline Name Fields - Shown if names are missing for non-anonymous user */}
           {shouldShowNameFields && currentUser && !currentUser.isAnonymous && (
-            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md mb-6" role="alert">
+            <div className="bg-white border-l-4 text-black p-4 rounded-md mb-6" role="alert">
               <p className="font-bold mb-2">Please provide your name to continue:</p>
               <div className="space-y-3">
                 <div>
