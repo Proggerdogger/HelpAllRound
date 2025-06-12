@@ -463,27 +463,43 @@ const Slideshow = () => {
             {/* Slide 3: What We Do - DESKTOP ONLY */}
             {isDesktop && (
               <SwiperSlide>
-                {/* Desktop: "What We Do" List Slide */}
-                <div className="hidden md:flex flex-col justify-center items-center h-auto md:h-[80vh] relative bg-white text-black p-16">
-                  <h2 className="text-5xl font-bold mb-10 text-gray-800">What we do</h2>
-                  <div className="flex flex-row gap-x-20 text-left">
-                    <ul className="space-y-4 text-xl list-disc pl-5">
-                      <li>Errands & Shopping</li>
-                      <li>Deliveries</li>
-                      <li>Transport</li>
-                      <li>Help for Seniors</li>
-                      <li>Simple Tech Help & Tutoring</li>
-                    </ul>
-                    <ul className="space-y-4 text-xl list-disc pl-5">
-                      <li>Gardening and Yard Work</li>
-                      <li>Cleaning</li>
-                      <li>Packing and Removals</li>
-                      <li>Home Appliance Instruction</li>
-                      <li>Amateur painting</li>
-                      
-                    </ul>
+                {/* Desktop: "What We Do" List Slide with Grainy Background */}
+                <div className="hidden md:flex flex-col justify-center items-center h-auto md:h-[80vh] relative p-16">
+                  {/* Background color layer */}
+                  <div
+                    className="absolute inset-0 z-0"
+                    style={{ backgroundColor: '#FDF6E3' }} // A soft, sandy yellow
+                  ></div>
+                  {/* Grainy texture overlay */}
+                  <div
+                    className="absolute inset-0 z-0"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+                      opacity: 0.05,
+                    }}
+                  ></div>
+                  
+                  {/* Content */}
+                  <div className="relative z-10 flex flex-col justify-center items-center text-center text-black">
+                    <h2 className="text-5xl font-bold mb-10">What we do</h2>
+                    <div className="flex flex-row gap-x-20 text-left">
+                      <ul className="space-y-4 text-xl list-disc pl-5">
+                        <li>Errands & Shopping</li>
+                        <li>Deliveries</li>
+                        <li>Transport</li>
+                        <li>Help for Seniors</li>
+                        <li>Simple Tech Help & Tutoring</li>
+                      </ul>
+                      <ul className="space-y-4 text-xl list-disc pl-5">
+                        <li>Gardening and Yard Work</li>
+                        <li>Cleaning</li>
+                        <li>Packing and Removals</li>
+                        <li>Home Appliance Instruction</li>
+                        <li>Amateur painting</li>
+                      </ul>
+                    </div>
+                    <p className="text-lg mt-10 italic text-gray-700">...Any task! As long as it doesn't require a certification.</p>
                   </div>
-                  <p className="text-lg mt-10 italic text-gray-600">...Any task! As long as it doesn't require a certification.</p>
                 </div>
               </SwiperSlide>
             )}
