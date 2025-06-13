@@ -278,7 +278,7 @@ const SelectAppointment: React.FC<SelectAppointmentProps> = ({ onBack, onNext, o
                           selectedDate && formatLocalDateToYYYYMMDD(selectedDate) === date.fullDate ? "text-red-600" : "text-red-500"
                         }`}
                       >
-                        From ${date.price} for first hour
+                        From ${date.price} 
                       </div>
                     </button>
                   </div>
