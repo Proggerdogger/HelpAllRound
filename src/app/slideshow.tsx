@@ -481,7 +481,7 @@ const Slideshow = () => {
                   {/* Left image */}
                   <div className="flex-shrink-0 hidden lg:block mr-8 z-10">
                     <Image
-                      src="/images/running.png"
+                      src="/images/Running.png"
                       alt="Running helper"
                       width={180}
                       height={260}
