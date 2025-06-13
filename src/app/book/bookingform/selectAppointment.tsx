@@ -278,7 +278,7 @@ const SelectAppointment: React.FC<SelectAppointmentProps> = ({ onBack, onNext, o
                           selectedDate && formatLocalDateToYYYYMMDD(selectedDate) === date.fullDate ? "text-red-600" : "text-red-500"
                         }`}
                       >
-                        From ${date.price}
+                        From ${date.price} for first hour
                       </div>
                     </button>
                   </div>
@@ -433,7 +433,7 @@ const SelectAppointment: React.FC<SelectAppointmentProps> = ({ onBack, onNext, o
               {selectedTime ? selectedTime : "No time selected"}
             </p>
             <p className="text-gray-700">
-              <span className="font-semibold">Price:</span> ${selectedDate ? 60 : 0}
+              <span className="font-semibold">Price:</span> ${selectedDate ? 60 : 0} for first hour + $35/hour after
             </p>
           </div>
 
